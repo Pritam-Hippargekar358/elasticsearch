@@ -22,8 +22,10 @@ import org.springframework.stereotype.Component;
 import tech.elastic.dto.*;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -63,7 +65,8 @@ public class CMDLineRunner implements CommandLineRunner {
 //                    }
 //                });
 
-        queryDocuments(indexName);
+//        queryDocuments(indexName);
+        queryDocumentsScript(indexName);
 
 //        Asynchronously deletes the document
 //        client.delete(i -> i.index("books").id("1")).whenComplete((success,failure)->{
@@ -192,12 +195,14 @@ public class CMDLineRunner implements CommandLineRunner {
 
        return Arrays.asList(doc1,doc2,doc3,doc4,doc5,doc6,doc7,doc8,doc9);
     }
+
     private Query initMatchQuery(String fieldName, String fieldValue) {
         return StringUtils.isNotBlank(fieldValue) ? MatchQuery.of(m -> m
                 .field(fieldName + ".keyword")
                 .query(fieldValue)
         )._toQuery() : null;
     }
+
     //https://juejin.cn/post/7195393521577099321?searchId=20241122160720297564465FAE0094442C
     private Query initRangeQuery(String fieldName, Integer begin, Integer end) {
         return  RangeQuery.of(m -> m
@@ -342,6 +347,7 @@ public class CMDLineRunner implements CommandLineRunner {
         System.out.println("createIndexResponse.shardsAcknowledged() = " + createIndexResponse.shardsAcknowledged());
         System.out.println("createIndexResponse.index() = " + createIndexResponse.index());
     }
+
     public void deleteIndex() throws IOException {
         DeleteIndexResponse deleteIndexResponse = client.indices().delete(i -> i.index("blog"));
         System.out.println("createIndexResponse.acknowledged() = " + deleteIndexResponse.acknowledged());
@@ -402,7 +408,7 @@ public class CMDLineRunner implements CommandLineRunner {
                 .query(q -> q
                         .geoDistance(g -> g
                                 .field("location")
-                                .distance(distance + "km") // Distance in km (can also be 'm', 'mi', etc.)
+                                .distance(distance + "km") // Distance in km (can also be 'm', 'mi', 'km', 'ft' etc.)
                                 .location(lo-> lo.latlon(tt-> tt.lat(lat).lon(lon)))
                                 .distanceType(GeoDistanceType.Arc)
                         )
@@ -411,6 +417,12 @@ public class CMDLineRunner implements CommandLineRunner {
 
         return client.search(searchRequest, ExampleDocument.class);
     }
+
+//    SELECT gender, COUNT(*) AS gender_count
+//    FROM <index_name>
+//    GROUP BY gender
+//    ORDER BY gender_count DESC
+//    LIMIT 100;
 
     public void searchGenderCount(String index) throws Exception {
         SearchRequest searchRequest = SearchRequest.of(s -> s
@@ -423,6 +435,7 @@ public class CMDLineRunner implements CommandLineRunner {
                 )
         );
         SearchResponse<Void> response =  client.search(searchRequest, Void.class);
+
 //        LongTermsAggregate longTermsAggregate = response.aggregations()
 //                .get("gender_count")
 //                .lterms();
@@ -430,42 +443,39 @@ public class CMDLineRunner implements CommandLineRunner {
 //                .get("gender_count")
 //                .sterms();
 
-        System.out.println(response.took());
+        System.out.println(response.took() +" "+response.toString());
         System.out.println(response.hits().total().value());
 
         response.hits().hits().forEach(e -> {
-            System.out.println(e.source().toString());
+            System.out.println(e.source());
         });
 
         Aggregate aggregate = response.aggregations().get("gender_count");
-        LongTermsAggregate lterms = aggregate.lterms();
-        Buckets<LongTermsBucket> buckets = lterms.buckets();
-//        List<LongTermsBucket> array = response.aggregations()
-//                .get("group_by_age")
-//                .lterms()
-//                .buckets()
-//                .array();
-        for (LongTermsBucket b : buckets.array()) {
-            System.out.println(b.key() + " : " + b.docCount());
+        StringTermsAggregate termsAggregate = aggregate.sterms();
+        Buckets<StringTermsBucket> buckets = termsAggregate.buckets();
+        for (StringTermsBucket b : buckets.array()) {
+            System.out.println(b.key()._toJsonString() + " : " + b.docCount());
         }
 
     }
 
-    void getMaxAgeUserTest(String index) throws IOException {
+    void getMaxAgeUser(String index) throws IOException {
         SearchResponse<Void> response = client.search(b -> b
                         .index(index)
                         .size(0)
                         .aggregations("maxAge", a -> a
                                 .max(MaxAggregation.of(s -> s
-                                        .field("age"))
+                                        .field("dob"))
                                 )
                         ),
                 Void.class
         );
+        System.out.println(response.took() +" "+response.toString());
         MaxAggregate maxAge = response.aggregations()
                 .get("maxAge")
                 .max();
-//        log.info("maxAge.value:{}",maxAge.value());
+        Instant instant = Instant.ofEpochMilli((long) maxAge.value());
+        System.out.println("maxAge.value:"+maxAge.value() +" "+instant.atZone(ZoneId.systemDefault()).toLocalDate());
     }
 
 
@@ -735,14 +745,14 @@ public class CMDLineRunner implements CommandLineRunner {
         }
     }
 
-    public void queryDocuments(String index) throws IOException {
+    public void queryDocumentsScript(String index) throws IOException {
         Map<String, JsonData> params = new HashMap<>();
         params.put("factor", JsonData.of(1.5));
 
         // Create the script
         Script script = Script.of(builder -> builder
                 .inline(inlineBuilder -> inlineBuilder
-                        .lang("painless")
+                        .lang(ScriptLanguage.Painless)
                         .source("doc['rating'].value * params.factor")
                         .params(params)
                 )
@@ -753,7 +763,7 @@ public class CMDLineRunner implements CommandLineRunner {
                 .index(index) // Define the index
                 .query(q -> q
                         .scriptScore(scriptScore -> scriptScore
-                                .query(ry->ry.matchAll( mt-> mt))
+                                .query(query -> query.matchAll(m -> m))
                                 .script(script)
                         )
                 )
