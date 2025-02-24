@@ -1,0 +1,149 @@
+public class LivingBeing {
+    private boolean alive = true;
+
+    public boolean isAlive() {
+        return alive;
+    }
+
+    public void setAlive(boolean alive) {
+        this.alive = alive;
+    }
+}
+public interface Identifiable {
+    String getId();
+}
+public class Person extends LivingBeing implements Identifiable {
+    private String id;
+    private String name;
+    private int age;
+
+    public Person() {
+        this.id = "000";
+        this.name = "John Doe";
+        this.age = 30;
+    }
+
+    public Person(String id, String name, int age) {
+        this.id = id;
+        this.name = name;
+        this.age = age;
+    }
+
+    @Override
+    public String getId() {
+        return id;
+    }
+
+    private void printInfo() {
+        System.out.println("ID: " + id + ", Name: " + name + ", Age: " + age);
+    }
+
+    // Getters and Setters
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+}
+public class ReflectionExample {
+    public static void main(String[] args) {
+        try {
+            // Option 1: Obtain the Class object using Class.forName()
+            Class<?> clazz1 = Class.forName("com.example.Person");
+
+            // Option 2: Obtain the Class object using .class syntax
+            Class<?> clazz2 = Person.class;
+
+            // Option 3: Obtain the Class object using an instance of the class
+            Person personInstance = new Person();
+            Class<?> clazz3 = personInstance.getClass();
+
+            // Inspect class information
+            System.out.println("Class Name (Option 1): " + clazz1.getName());
+            System.out.println("Class Name (Option 2): " + clazz2.getName());
+            System.out.println("Class Name (Option 3): " + clazz3.getName());
+
+            // Print the superclass hierarchy
+            System.out.println("Superclass hierarchy:");
+            printSuperclassHierarchy(clazz1);
+
+            // Interfaces implemented by the class
+            System.out.println("Interfaces: " + Arrays.toString(clazz1.getInterfaces()));
+
+            // Work with fields
+            Field[] fields = clazz1.getDeclaredFields();
+            System.out.println("Fields:");
+            for (Field field : fields) {
+                field.setAccessible(true);
+                System.out.println(field.getName() + " - " + field.getType().getName());
+            }
+
+            // Create an instance using the default constructor
+            Constructor<?> defaultConstructor = clazz1.getConstructor();
+            Object instance = defaultConstructor.newInstance();
+            System.out.println("Created instance using default constructor: " + instance);
+
+            // Access and modify fields
+            Field idField = clazz1.getDeclaredField("id");
+            Field nameField = clazz1.getDeclaredField("name");
+            Field ageField = clazz1.getDeclaredField("age");
+            idField.setAccessible(true);
+            nameField.setAccessible(true);
+            ageField.setAccessible(true);
+
+            System.out.println("Initial ID: " + idField.get(instance));
+            System.out.println("Initial Name: " + nameField.get(instance));
+            System.out.println("Initial Age: " + ageField.get(instance));
+
+            idField.set(instance, "123");
+            nameField.set(instance, "Jane Doe");
+            ageField.set(instance, 25);
+
+            System.out.println("Modified ID: " + idField.get(instance));
+            System.out.println("Modified Name: " + nameField.get(instance));
+            System.out.println("Modified Age: " + ageField.get(instance));
+
+            // Invoke a method
+            Method printInfoMethod = clazz1.getDeclaredMethod("printInfo");
+            printInfoMethod.setAccessible(true);
+            printInfoMethod.invoke(instance);
+
+            // Create an instance using the parameterized constructor
+            Constructor<?> paramConstructor = clazz1.getConstructor(String.class, String.class, int.class);
+            Object paramInstance = paramConstructor.newInstance("456", "Alice", 28);
+            System.out.println("Created instance using parameterized constructor: " + paramInstance);
+
+            // Access and invoke getters
+            Method getIdMethod = clazz1.getDeclaredMethod("getId");
+            Method getNameMethod = clazz1.getDeclaredMethod("getName");
+            Method getAgeMethod = clazz1.getDeclaredMethod("getAge");
+            String id = (String) getIdMethod.invoke(paramInstance);
+            String name = (String) getNameMethod.invoke(paramInstance);
+            int age = (int) getAgeMethod.invoke(paramInstance);
+
+            System.out.println("ID from getter: " + id);
+            System.out.println("Name from getter: " + name);
+            System.out.println("Age from getter: " + age);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void printSuperclassHierarchy(Class<?> clazz) {
+        while (clazz != null) {
+            System.out.println(clazz.getName());
+            clazz = clazz.getSuperclass();
+        }
+    }
+}

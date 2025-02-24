@@ -1,0 +1,155 @@
+script_query = {
+            "function_score": {
+                "query": {
+                    "multi_match": {
+                        "query": query,
+                        "fields": [
+                            "name^5",
+                            "category"
+                        ]
+                    }
+                },
+                "script_score": {
+                    "script": {
+                        "source": "cosineSimilarity(params.query_vector, 'name_vector') + 1.0",
+                        "params": {
+                            "query_vector": query_vector
+                        }
+                    }
+                }
+            }
+        }
+
+script_query = {
+    "function_score": {
+        "query": {
+            "multi_match": {
+                "query": query,
+                "fields": [
+                    "name^5",
+                    "category"
+                ]
+            }
+        },
+        "functions": [
+            {
+                "script_score": {
+                    "script": {
+                        "source": "cosineSimilarity(params.query_vector, 'name_vector') + 1.0",
+                        "params": {
+                            "query_vector": query_vector
+                        }
+                    }
+                },
+                "weight": 50
+            },
+            {
+                "filter": { "match": { "name": query } },
+                "random_score": {},
+                "weight": 23
+            }
+        ]
+    }
+}
+
+
+  "query": {
+    "function_score": {
+      "query": { "match_all": {} },
+      "boost": "5",
+      "functions": [
+        {
+          "filter": { "match": { "test": "bar" } },
+          "random_score": {},
+          "weight": 23
+        },
+        {
+          "filter": { "match": { "test": "cat" } },
+          "weight": 42
+        }
+      ],
+      "max_boost": 42,
+      "score_mode": "max",
+      "boost_mode": "multiply",
+      "min_score": 42
+    }
+  }
+
+String searchTerm = "laptop";
+double minPrice = 500;
+double maxPrice = 1500;
+client.search(b0 -> b0
+                .index("products")
+                .query(b1 -> b1
+                    .bool(b2 -> b2
+                        .must(m -> m
+                            .match(ma -> ma
+                                .field("name")
+                                .query(searchTerm)  // Searching for the term in the "name" field
+                            )
+                        )
+                        .filter(f -> f
+                            .range(r -> r
+                                .field("price")
+                                .gte(minPrice)  // Minimum price filter
+                                .lte(maxPrice)  // Maximum price filter
+                            )
+                        )
+                    )
+                ),
+                Product.class
+        );
+
+
+int page = 1;  // Page number for pagination
+int size = 10; // Number of results per page
+// Perform search with the Fluent API style
+        client.search(b0 -> b0
+                .index("products") // Specify index
+                .query(b1 -> b1
+                    .functionScore(b2 -> b2
+                        .query(QueryBuilders.matchAllQuery()) // Base query: match all
+                        .add(b3 -> b3
+                            .filter(QueryBuilders.termQuery("category.keyword", "electronics")) // Filter by category
+                            .function(b4 -> b4
+                                .scriptScore(b5 -> b5
+                                    .script(s -> s
+                                        .source("doc['price'].value * params.discount") // Script to apply a discount on price
+                                        .params(Map.of("discount", 0.9)) // 10% discount
+                                    )
+                                )
+                            )
+                        )
+                        .add(b6 -> b6
+                            .filter(QueryBuilders.rangeQuery("price").gte(100)) // Filter by price range
+                            .function(b7 -> b7
+                                .scriptScore(b8 -> b8
+                                    .script(s -> s
+                                        .source("Math.log(1 + doc['price'].value)") // Apply logarithmic transformation on price
+                                    )
+                                )
+                            )
+                        )
+                        .boostMode(FunctionScoreQueryBuilder.BoostMode.SUM) // Sum the query score and function scores
+                    )
+                )
+                .from((page - 1) * size)  // Pagination: offset
+                .size(size),  // Pagination: number of results per page
+                Product.class // Map search results to Product POJO
+        );
+
+score_mode Specifies how the scores of each computed function are combined.
+multiply: Multiplies scores. (default)
+sum: Add the scores.
+avg: Find the average of the scores.
+first: Gets the first value that matches the filter.
+max: Use the highest score.
+min: Use the smallest score.
+
+boost_mode shows how to combine the computed score with the score of the query.
+multiply: Multiplies the query score by the function score. (default)
+replace: Only the function score is used and the query score is ignored.
+sum: Add the query score and the function score.
+avg: average
+max: Maximum value
+min: Minimum

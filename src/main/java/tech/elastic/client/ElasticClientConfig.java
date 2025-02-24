@@ -4,10 +4,8 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.cluster.HealthResponse;
 import co.elastic.clients.json.JsonpMapper;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientOptions;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -23,13 +21,15 @@ import org.springframework.context.annotation.Configuration;
 import java.io.IOException;
 
 @Configuration
-public class ClientConfig {
+public class ElasticClientConfig {
 
     @Bean
     public RestClient restClient() throws IOException {
         String serverUrl = "http://localhost:9200";
+        String userName = "elastic";
+        String passWord = "=3AV5b=0HiEMrhNDpRBP";
         BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-        credentialsProvider.setCredentials(AuthScope.ANY,  new UsernamePasswordCredentials("elastic", "=3AV5b=0HiEMrhNDpRBP") );
+        credentialsProvider.setCredentials(AuthScope.ANY,  new UsernamePasswordCredentials(userName, passWord) );
 
 //        RestClient restClient = RestClient.builder(new HttpHost("localhost", 9200, "http"))
 //                .setHttpClientConfigCallback(hc -> hc.setDefaultCredentialsProvider(credentialsProvider))

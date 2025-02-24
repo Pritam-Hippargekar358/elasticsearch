@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+//https://chikuwa-tech-study.blogspot.com/2022/10/elasticsearch-java-api-client-search-and-query-condition.html
 @Component
 public class CMDLineRunner implements CommandLineRunner {
     //https://levelup.gitconnected.com/elasticsearch-with-java-41daeda3e6b1
@@ -966,29 +967,24 @@ public class CMDLineRunner implements CommandLineRunner {
 //
 //Combination + paging + sorting + grouping + aggregation query
 //public PageVO queryUser(String indexName, UserDTO user) {
-//    // 将多个查询条件放入list中.
 //    List<Query> queries = new ArrayList<>();
 //    Query byEducation = this.initMatchQuery("education", user.getEducation());
 //    Query byAge = this.initRangeQuery("age", 18, 60);
 //    queries.add(byEducation);
 //    queries.add(byAge);
 //    int offSet = user.getOffset();
-//    // 因为es分页时，查找的是from到from+size的数据.
 //    Integer from = offSet <= 0 ? 0 : apuserpLog.getLimit() * offSet;
 //    try {
 //
-//        // 根据性别分组展示，且分组内只展示年龄最大的一条.
 //        List<SortOptions> sorts = new ArrayList<>();
 //        SortOptions sortName = SortOptionsBuilders.field(f -> f.field("age.keyword")
 //                .order(SortOrder.Desc));
 //        sorts.add(sortName);
-//        // 从es中根据条件查询结果.
 //        SearchResponse<User> searchResponse = client.search(s -> s
 //                .index(indexName)
 //                .query(q -> q
 //                        .bool(b -> b.must(queries)
 //                        )
-//                        // 根据sex性别进行分组.
 //                        .collapse(col -> col
 //                                .field("sex.keyword").innerHits(inner -> inner
 //                                        .name("group")
@@ -997,12 +993,10 @@ public class CMDLineRunner implements CommandLineRunner {
 //                                        .size(0)
 //                                        .sort(sorts)
 //                                ))
-//                        // 根据sex性别进行聚合.
 //                        .aggregations("sex.keyword", a -> a.terms(t -> t.field("sex.keyword")
 //                                .size(100000)))
 //                        .from(from)
 //                        .size(user.getLimit())
-//                        // 按照创建正序排列.
 //                        .sort(sort -> sort.field(f -> f.field("createTime.keyword").order(SortOrder.Asc)))
 //                ), User.class);
 //        List<Hit<User>> hitList = searchResponse.hits().hits();
@@ -1015,9 +1009,7 @@ public class CMDLineRunner implements CommandLineRunner {
 //        Map<String, Long> map = new HashMap<>();
 //        searchResponse.aggregations().get("sex.keyword").sterms().buckets().array()
 //                .forEach(f -> map.put(f.key().stringValue(), f.docCount()));
-//        // 这里total改成实际的分组数据.
 //        total = map.size();
-//        // 这里将每一个分组出现的次数也进行了统计.
 //        userList.forEach(user -> {
 //            if (map.containsKey(user.getSex())) {
 //                user.setCount(map.get(user.getSex()));
@@ -1033,3 +1025,55 @@ public class CMDLineRunner implements CommandLineRunner {
 //
 //}
 
+//Query firstNameQuery = MatchQuery.of(m -> m.field("firstname").query("Amber"))._toQuery();
+//Query ageQuery = MatchQuery.of(m -> m.field("age").query(32))._toQuery();
+//SearchResponse<Account> searchResp = esClient.search(s -> s
+//                .index(indexName)
+//                .query(q -> q
+//                        .bool(b -> b.must(firstNameQuery, ageQuery))
+//                )
+//        , Account.class
+//);
+
+
+//esClient.indices().create(c -> c
+//        .index(indexName)
+//        .mappings(mappings -> mappings  // 映射
+//        .properties("name", p -> p
+//        .text(t -> t // text类型，index=false
+//        .index(false)
+//                        )
+//                                )
+//                                .properties("age", p -> p
+//        .long_(t -> t) // long类型
+//        )
+//        )
+//        );
+
+
+
+//void createIndex() throws IOException {
+//    Map<String, Property> documentMap = new HashMap<>();
+//    documentMap.put("userName", Property.of(property ->
+//                    property.text(TextProperty.of(textProperty ->
+//                            textProperty.index(true).analyzer("ik_max_word"))
+//                    )
+//            )
+//    );
+//    documentMap.put("age", Property.of(property ->
+//                    property.integer(IntegerNumberProperty.of(integerNumberProperty
+//                            -> integerNumberProperty.index(true))
+//                    )
+//            )
+//    );
+//
+//
+//    CreateIndexResponse createIndexResponse = elasticsearchClient.indices().create(createIndexBuilder ->
+//            createIndexBuilder.index("user").mappings(mappings ->
+//                            mappings.properties(documentMap))
+//                    .aliases("User",aliases ->
+//                            aliases.isWriteIndex(true))
+//    );
+//    Boolean acknowledged = createIndexResponse.acknowledged();
+//    System.out.println("acknowledged = " + acknowledged);
+//}
